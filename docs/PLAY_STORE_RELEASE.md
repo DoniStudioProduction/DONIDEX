@@ -10,9 +10,9 @@
 ## Build gate
 - [x] GitHub Android workflow completes successfully
 - [x] Release AAB generated and uploaded as a GitHub Actions artifact
+- [x] Google Play API 36 configured and verified in the latest release run
 - [x] Java 21 build environment
-- [ ] Confirm generated project targets Android API 36 in the latest release run
-- [ ] Configure production signing key and keep keystore credentials outside source control
+- [ ] Configure production upload/signing key and keep keystore credentials outside source control
 - [ ] Build the signed production AAB
 - [ ] Verify application ID, version code and version name
 
