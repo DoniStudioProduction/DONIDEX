@@ -1,0 +1,19 @@
+import { useEffect, useState } from 'react';
+import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { UserPlus, Users, X, ShieldCheck, Trash2 } from 'lucide-react';
+import { auth, db, firebaseConfigured } from './lib/firebase';
+import { loadWorkspace } from './lib/workspace';
+import './team.css';
+
+type Member = { id: string; email: string; role: 'admin' | 'staff'; status: 'invited' | 'active'; createdAt: number };
+
+export default function TeamManagement() {
+ const [user, setUser] = useState<any>(null); const [open, setOpen] = useState(false); const [members, setMembers] = useState<Member[]>([]); const [email, setEmail] = useState(''); const [role, setRole] = useState<Member['role']>('staff'); const [message, setMessage] = useState('');
+ const load = async (uid: string) => { if (!db) return; const workspace = await loadWorkspace(uid); const businessId = workspace?.activeBusinessId || workspace?.businesses?.[0]?.id; if (!businessId) return; const snap = await getDocs(collection(db, 'users', uid, 'businesses', businessId, 'team')); setMembers(snap.docs.map(d => d.data() as Member)); };
+ useEffect(() => { if (!auth) return; return onAuthStateChanged(auth, u => { setUser(u?.emailVerified ? u : null); if (u?.emailVerified) void load(u.uid); }); }, []);
+ const invite = async () => { if (!user || !db || !email.trim()) return; const workspace = await loadWorkspace(user.uid); const businessId = workspace?.activeBusinessId || workspace?.businesses?.[0]?.id; if (!businessId) return; const member: Member = { id: crypto.randomUUID(), email: email.trim().toLowerCase(), role, status: 'invited', createdAt: Date.now() }; await setDoc(doc(db, 'users', user.uid, 'businesses', businessId, 'team', member.id), member); setMembers(v => [member, ...v]); setEmail(''); setMessage('Team invitation staged. Email delivery will be connected in the next team backend batch.'); };
+ const remove = async (id: string) => { if (!user || !db) return; const workspace = await loadWorkspace(user.uid); const businessId = workspace?.activeBusinessId || workspace?.businesses?.[0]?.id; if (!businessId) return; await deleteDoc(doc(db, 'users', user.uid, 'businesses', businessId, 'team', id)); setMembers(v => v.filter(m => m.id !== id)); };
+ if (!user || !firebaseConfigured) return null;
+ return <><button className="team-launcher" onClick={() => { setMessage(''); setOpen(true); }}><Users size={16}/> Team</button>{open && <div className="team-backdrop" onClick={() => setOpen(false)}><section className="team-modal" onClick={e => e.stopPropagation()}><header><div><p className="eyebrow">BUSINESS / TEAM</p><h2>Team & staff</h2><p>Prepare role-based access for your business.</p></div><button className="icon-btn" onClick={() => setOpen(false)}><X size={18}/></button></header><div className="team-form"><input value={email} onChange={e => setEmail(e.target.value)} placeholder="Staff email address" type="email"/><select value={role} onChange={e => setRole(e.target.value as Member['role'])}><option value="staff">Staff</option><option value="admin">Admin</option></select><button className="primary" onClick={() => void invite()}><UserPlus size={15}/> Add member</button></div>{message && <div className="team-message">{message}</div>}<div className="team-list">{members.length ? members.map(m => <div className="team-row" key={m.id}><div><strong>{m.email}</strong><span>{m.status} · {m.role}</span></div><ShieldCheck size={17}/><button className="icon-btn" onClick={() => void remove(m.id)} aria-label={`Remove ${m.email}`}><Trash2 size={15}/></button></div>) : <div className="team-empty">No team members yet.</div>}</div><small className="team-note">Owner remains the account holder. Admin and Staff roles are staged here before invite acceptance and permission enforcement are connected.</small></section></div>}</>;
+}
