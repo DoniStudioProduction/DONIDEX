@@ -1,12 +1,34 @@
 import type { Config } from '@netlify/functions';
-const allowed = new Set([process.env.STRIPE_PREMIUM_MONTHLY_PRICE_ID, process.env.STRIPE_PREMIUM_YEARLY_PRICE_ID || 'price_1UDyvUBobbaEE4WQpXOMxZx3', process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID, process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID].filter(Boolean));
+
+const plans = new Set([
+  process.env.PAYSTACK_PREMIUM_MONTHLY_PLAN_CODE,
+  process.env.PAYSTACK_PREMIUM_YEARLY_PLAN_CODE,
+  process.env.PAYSTACK_BUSINESS_MONTHLY_PLAN_CODE,
+  process.env.PAYSTACK_BUSINESS_YEARLY_PLAN_CODE,
+].filter(Boolean));
+
 export default async (request: Request) => {
   if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405, headers: { allow: 'POST' } });
-  const secret = process.env.STRIPE_API_KEY; if (!secret) return Response.json({ error: 'Billing is not configured on this deployment.' }, { status: 503 });
+  const secret = process.env.PAYSTACK_SECRET_KEY;
+  if (!secret) return Response.json({ error: 'Paystack billing is not configured on this deployment.' }, { status: 503 });
   const body = await request.json().catch(() => null) as { priceId?: string; customerEmail?: string; userId?: string } | null;
-  if (!body?.priceId || !allowed.has(body.priceId)) return Response.json({ error: 'Unknown or unconfigured recurring price.' }, { status: 400 });
-  const origin = new URL(request.url).origin; const params = new URLSearchParams(); params.set('mode', 'subscription'); params.set('line_items[0][price]', body.priceId); params.set('line_items[0][quantity]', '1'); params.set('success_url', `${origin}/?billing=success&session_id={CHECKOUT_SESSION_ID}`); params.set('cancel_url', `${origin}/?billing=cancelled`); params.set('allow_promotion_codes', 'true');
-  if (body.customerEmail) params.set('customer_email', body.customerEmail); if (body.userId) { params.set('client_reference_id', body.userId); params.set('metadata[userId]', body.userId); } if (body.customerEmail) params.set('metadata[email]', body.customerEmail); params.set('subscription_data[metadata][planPriceId]', body.priceId); if (body.userId) params.set('subscription_data[metadata][userId]', body.userId);
-  const response = await fetch('https://api.stripe.com/v1/checkout/sessions', { method: 'POST', headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/x-www-form-urlencoded' }, body: params }); const data = await response.json(); if (!response.ok) return Response.json({ error: data?.error?.message || 'Stripe checkout could not be created.' }, { status: 502 }); return Response.json({ url: data.url, sessionId: data.id });
+  if (!body?.priceId || !plans.has(body.priceId)) return Response.json({ error: 'Unknown or unconfigured Paystack plan.' }, { status: 400 });
+  if (!body.customerEmail) return Response.json({ error: 'Customer email is required.' }, { status: 400 });
+  const origin = new URL(request.url).origin;
+  const payload = {
+    email: body.customerEmail,
+    plan: body.priceId,
+    callback_url: `${origin}/?billing=paystack-return`,
+    metadata: JSON.stringify({ userId: body.userId || null, email: body.customerEmail, planCode: body.priceId }),
+  };
+  const response = await fetch('https://api.paystack.co/transaction/initialize', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data?.status || !data?.data?.authorization_url) return Response.json({ error: data?.message || 'Paystack checkout could not be created.' }, { status: 502 });
+  return Response.json({ url: data.data.authorization_url, reference: data.data.reference, accessCode: data.data.access_code });
 };
+
 export const config: Config = { path: '/api/billing/checkout' };
