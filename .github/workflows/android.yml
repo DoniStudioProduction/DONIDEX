@@ -21,16 +21,23 @@ jobs:
         run: npm run build
       - name: Add Android platform
         run: npx cap add android
+      - name: Configure Google Play API 36
+        working-directory: android
+        run: |
+          echo 'Capacitor Android SDK configuration before release gate:'
+          grep -E 'compileSdkVersion|targetSdkVersion' variables.gradle || true
+          sed -i -E 's/(compileSdkVersion[[:space:]]*=[[:space:]]*)[0-9]+/\136/' variables.gradle
+          sed -i -E 's/(targetSdkVersion[[:space:]]*=[[:space:]]*)[0-9]+/\136/' variables.gradle
+          echo 'Capacitor Android SDK configuration after API 36 enforcement:'
+          grep -E 'compileSdkVersion|targetSdkVersion' variables.gradle
       - name: Verify Google Play API 36 target
         working-directory: android
         run: |
           echo 'Generated Android SDK configuration:'
           grep -E 'compileSdk|targetSdk' app/build.gradle || true
-          if ! grep -Eq 'targetSdk(Version)?[[:space:]]+36' app/build.gradle; then
-            echo 'ERROR: Generated Android project is not targeting API 36.'
-            exit 1
-          fi
-          echo 'PASS: Android targetSdk 36 verified.'
+          grep -E 'compileSdkVersion[[:space:]]*=[[:space:]]*36' variables.gradle
+          grep -E 'targetSdkVersion[[:space:]]*=[[:space:]]*36' variables.gradle
+          echo 'PASS: Android compileSdkVersion 36 and targetSdkVersion 36 verified.'
       - name: Sync Capacitor
         run: npx cap sync android
       - name: Setup Java
