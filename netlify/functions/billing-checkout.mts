@@ -1,32 +1,12 @@
 import type { Config } from '@netlify/functions';
-
-const allowed = new Set([
-  process.env.STRIPE_PREMIUM_MONTHLY_PRICE_ID,
-  process.env.STRIPE_PREMIUM_YEARLY_PRICE_ID || 'price_1UDyvUBobbaEE4WQpXOMxZx3',
-  process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID,
-  process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID,
-].filter(Boolean));
-
+const allowed = new Set([process.env.STRIPE_PREMIUM_MONTHLY_PRICE_ID, process.env.STRIPE_PREMIUM_YEARLY_PRICE_ID || 'price_1UDyvUBobbaEE4WQpXOMxZx3', process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID, process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID].filter(Boolean));
 export default async (request: Request) => {
   if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405, headers: { allow: 'POST' } });
-  const secret = process.env.STRIPE_API_KEY;
-  if (!secret) return Response.json({ error: 'Billing is not configured on this deployment.' }, { status: 503 });
+  const secret = process.env.STRIPE_API_KEY; if (!secret) return Response.json({ error: 'Billing is not configured on this deployment.' }, { status: 503 });
   const body = await request.json().catch(() => null) as { priceId?: string; customerEmail?: string; userId?: string } | null;
   if (!body?.priceId || !allowed.has(body.priceId)) return Response.json({ error: 'Unknown or unconfigured recurring price.' }, { status: 400 });
-  const origin = new URL(request.url).origin;
-  const params = new URLSearchParams();
-  params.set('mode', 'subscription');
-  params.set('line_items[0][price]', body.priceId);
-  params.set('line_items[0][quantity]', '1');
-  params.set('success_url', `${origin}/?billing=success&session_id={CHECKOUT_SESSION_ID}`);
-  params.set('cancel_url', `${origin}/?billing=cancelled`);
-  params.set('allow_promotion_codes', 'true');
-  if (body.customerEmail) params.set('customer_email', body.customerEmail);
-  if (body.userId) params.set('client_reference_id', body.userId);
-  const response = await fetch('https://api.stripe.com/v1/checkout/sessions', { method: 'POST', headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/x-www-form-urlencoded' }, body: params });
-  const data = await response.json();
-  if (!response.ok) return Response.json({ error: data?.error?.message || 'Stripe checkout could not be created.' }, { status: 502 });
-  return Response.json({ url: data.url, sessionId: data.id });
+  const origin = new URL(request.url).origin; const params = new URLSearchParams(); params.set('mode', 'subscription'); params.set('line_items[0][price]', body.priceId); params.set('line_items[0][quantity]', '1'); params.set('success_url', `${origin}/?billing=success&session_id={CHECKOUT_SESSION_ID}`); params.set('cancel_url', `${origin}/?billing=cancelled`); params.set('allow_promotion_codes', 'true');
+  if (body.customerEmail) params.set('customer_email', body.customerEmail); if (body.userId) { params.set('client_reference_id', body.userId); params.set('metadata[userId]', body.userId); } if (body.customerEmail) params.set('metadata[email]', body.customerEmail); params.set('subscription_data[metadata][planPriceId]', body.priceId); if (body.userId) params.set('subscription_data[metadata][userId]', body.userId);
+  const response = await fetch('https://api.stripe.com/v1/checkout/sessions', { method: 'POST', headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/x-www-form-urlencoded' }, body: params }); const data = await response.json(); if (!response.ok) return Response.json({ error: data?.error?.message || 'Stripe checkout could not be created.' }, { status: 502 }); return Response.json({ url: data.url, sessionId: data.id });
 };
-
 export const config: Config = { path: '/api/billing/checkout' };
