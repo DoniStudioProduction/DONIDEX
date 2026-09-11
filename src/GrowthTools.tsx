@@ -1,0 +1,26 @@
+import { useEffect, useMemo, useState } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { BarChart3, CreditCard, PackagePlus, RefreshCw, X } from 'lucide-react';
+import { auth, firebaseConfigured } from './lib/firebase';
+import './growth.css';
+
+type Product = { id: string; name: string; price: number };
+type Recurring = { id: string; customer: string; amount: number; cadence: 'Monthly' | 'Yearly' };
+
+const money = (n: number) => `₦${n.toLocaleString('en-NG')}`;
+const read = <T,>(key: string, fallback: T): T => { try { const raw = localStorage.getItem(`donidex:${key}`); return raw ? JSON.parse(raw) as T : fallback; } catch { return fallback; } };
+const write = <T,>(key: string, value: T) => localStorage.setItem(`donidex:${key}`, JSON.stringify(value));
+
+export default function GrowthTools() {
+ const [user, setUser] = useState<any>(null); const [open, setOpen] = useState(false); const [plan, setPlan] = useState('Free'); const [tab, setTab] = useState<'products'|'recurring'|'followup'|'pulse'>('products');
+ const [products, setProducts] = useState<Product[]>(() => read('products', [])); const [recurring, setRecurring] = useState<Recurring[]>(() => read('recurring', []));
+ useEffect(() => { if (!auth) return; return onAuthStateChanged(auth, async u => { setUser(u?.emailVerified ? u : null); if (!u?.emailVerified) return; try { const r = await fetch(`/api/billing/status?email=${encodeURIComponent(u.email || '')}`); const data = await r.json(); setPlan(data?.plan || 'Free'); } catch { setPlan('Free'); } }); }, []);
+ useEffect(() => write('products', products), [products]); useEffect(() => write('recurring', recurring), [recurring]);
+ const docs = read<any[]>('docs', []); const customers = read<any[]>('customers', []);
+ const overdue = useMemo(() => docs.filter(d => d.status === 'Overdue'), [docs]);
+ const revenue = useMemo(() => docs.filter(d => d.status === 'Paid').reduce((s, d) => s + Number(d.total || 0), 0), [docs]);
+ const outstanding = useMemo(() => docs.filter(d => d.status !== 'Paid').reduce((s, d) => s + Number(d.total || 0), 0), [docs]);
+ if (!user || !firebaseConfigured) return null;
+ const paid = plan !== 'Free' && plan !== 'Paid';
+ return <><button className="growth-launcher" onClick={() => setOpen(true)}><BarChart3 size={16}/> Growth</button>{open && <div className="growth-backdrop" onClick={() => setOpen(false)}><section className="growth-modal" onClick={e => e.stopPropagation()}><header><div><p className="eyebrow">DONIDEX GROWTH</p><h2>Growth tools</h2><p>Operational tools for repeat revenue and better collections.</p></div><button className="icon-btn" onClick={() => setOpen(false)}><X size={18}/></button></header>{plan === 'Free' ? <div className="growth-upgrade"><CreditCard size={28}/><h3>Premium access required</h3><p>Growth tools are part of the paid DONIDEX experience. Your current account is on the Free plan.</p><small>Premium: ₦5,000/month or ₦50,000/year · Business / Team: ₦15,000/month or ₦150,000/year.</small></div> : <>{!paid && <div className="growth-message">Your billing status is active. Growth access is enabled.</div>}<nav className="growth-tabs"><button className={tab==='products'?'active':''} onClick={() => setTab('products')}><PackagePlus size={15}/>Products</button><button className={tab==='recurring'?'active':''} onClick={() => setTab('recurring')}><RefreshCw size={15}/>Recurring</button><button className={tab==='followup'?'active':''} onClick={() => setTab('followup')}><CreditCard size={15}/>Follow-up</button><button className={tab==='pulse'?'active':''} onClick={() => setTab('pulse')}><BarChart3 size={15}/>Pulse</button></nav>{tab==='products' && <div className="growth-panel"><button className="primary" onClick={() => setProducts(v => [{ id: crypto.randomUUID(), name: 'New service', price: 0 }, ...v])}>Add product/service</button>{products.length ? products.map(p => <div className="growth-row" key={p.id}><span>{p.name}</span><b>{money(p.price)}</b></div>) : <p className="muted">No products or services yet.</p>}</div>}{tab==='recurring' && <div className="growth-panel"><button className="primary" onClick={() => setRecurring(v => [{ id: crypto.randomUUID(), customer: 'New customer', amount: 0, cadence: 'Monthly' }, ...v])}>Add recurring profile</button>{recurring.length ? recurring.map(r => <div className="growth-row" key={r.id}><span>{r.customer}<small>{r.cadence}</small></span><b>{money(r.amount)}</b></div>) : <p className="muted">No recurring invoice profiles yet.</p>}</div>}{tab==='followup' && <div className="growth-panel"><h3>Collection queue</h3>{overdue.length ? overdue.map(d => <div className="growth-row" key={d.id}><span>{d.number}<small>{d.customer}</small></span><b>{money(Number(d.total || 0))}</b></div>) : <p className="muted">No overdue invoices in the current workspace.</p>}<small className="growth-note">Automated WhatsApp/email follow-up remains subject to the notification backend batch.</small></div>}{tab==='pulse' && <div className="growth-panel"><div className="pulse-grid"><article><span>Customers</span><b>{customers.length}</b></article><article><span>Revenue</span><b>{money(revenue)}</b></article><article><span>Outstanding</span><b>{money(outstanding)}</b></article><article><span>Overdue</span><b>{overdue.length}</b></article></div></div>}</>}</section></div>}</>;
+}
