@@ -30,6 +30,7 @@ jobs:
             echo 'ERROR: Generated Android project is not targeting API 36.'
             exit 1
           fi
+          echo 'PASS: Android targetSdk 36 verified.'
       - name: Sync Capacitor
         run: npx cap sync android
       - name: Setup Java
