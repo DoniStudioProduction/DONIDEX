@@ -7,8 +7,7 @@ import { auth, db } from './lib/firebase';
 type Price = { key: string; name: string; interval: 'month'|'year'; amount: number; priceId: string };
 type BillingStatus = { plan: string; status: string; entitlementActive: boolean; subscriptionId?: string | null; source?: string };
 
-const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined;
-const billingBase = projectId ? `https://us-central1-${projectId}.cloudfunctions.net/paystackBilling` : '';
+const billingBase = String(import.meta.env.VITE_PAYSTACK_API_BASE || '').replace(/\/+$/, '');
 const billingUrl = (route: string, query = '') => billingBase ? `${billingBase}/${route}${query}` : `/api/billing/${route}${query}`;
 
 export default function BillingCenter() {
