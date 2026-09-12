@@ -18,6 +18,9 @@ GitHub is the source of truth for the DONIDEX migration to a zero-upfront-cost h
 - [x] Show/hide password control
 - [x] Email verification gate
 - [x] Firebase auth/data foundation
+- [x] User directory indexing for verified accounts
+- [x] Owner Top-Up subscription recovery console
+- [x] Owner-verified entitlement recovery for customers whose Paystack activation is delayed
 - [x] Multi-business switching foundation
 - [x] Backup/recovery hardening foundation
 - [x] Payment Center with full/partial payment recording and receipts
@@ -42,6 +45,14 @@ GitHub is the source of truth for the DONIDEX migration to a zero-upfront-cost h
 - Free — NGN 0
 - Premium — NGN 5,000/month or NGN 50,000/year
 - Business / Team — NGN 15,000/month or NGN 150,000/year
+
+## Owner subscription recovery
+- Owner/admin identity: `donistudioproduction@gmail.com`
+- Search verified DONIDEX accounts by email and linked provider metadata.
+- Manually grant Premium or Business / Team access for a selected duration after independently verifying payment proof.
+- Manual entitlements are recorded against the customer's Firebase UID with reason, payment/receipt reference, creator identity and timestamps.
+- Active owner recovery entitlements are honored by the billing UI even when Paystack activation is delayed.
+- Firestore rules restrict owner recovery writes to the verified owner identity and customer reads to the customer or owner.
 
 ## Locked authentication
 - Google
