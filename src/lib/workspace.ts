@@ -2,7 +2,7 @@ import { collection, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
 export type DonidexBusiness = { id: string; name: string; phone?: string; email?: string; address?: string; tax?: number; prefix?: string; next?: number; archived?: boolean; createdAt?: number; updatedAt?: number };
-export type DonidexBusinessData = { documents?: Record<string, unknown>[]; customers?: Record<string, unknown>[]; expenses?: Record<string, unknown>[]; settings?: Record<string, unknown>; updatedAt?: number };
+export type DonidexBusinessData = { documents?: Record<string, unknown>[]; customers?: Record<string, unknown>[]; expenses?: Record<string, unknown>[]; settings?: Record<string, unknown>; hubProducts?: Record<string, unknown>[]; hubRecurring?: Record<string, unknown>[]; updatedAt?: number };
 export type DonidexWorkspace = { profile?: Record<string, unknown>; businesses?: DonidexBusiness[]; activeBusinessId?: string; documents?: Record<string, unknown>[]; customers?: Record<string, unknown>[]; expenses?: Record<string, unknown>[]; settings?: Record<string, unknown>; migratedAt?: number; updatedAt?: number };
 
 const requireDb = () => { if (!db) throw new Error('DONIDEX data storage is not configured yet.'); return db; };
