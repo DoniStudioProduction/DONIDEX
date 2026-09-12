@@ -2,33 +2,48 @@
 
 Mobile-first business management platform for invoices, customers, expenses, payments, reports, multi-business operations, and business growth.
 
-## Migration
+## Migration status
 
-This repository is the new source of truth for the DONIDEX migration away from AppDeploy. The existing AppDeploy deployment remains untouched as the reference build while the frontend, serverless API, authentication, persistence, email, and Stripe integrations are reconstructed for a zero-upfront-cost hosting path.
+GitHub is the source of truth for the DONIDEX migration to a zero-upfront-cost hosting path.
 
-### Migration status
-- [x] GitHub repository established
-- [x] React/Vite foundation established
-- [x] Core DONIDEX workspace reconstructed
-- [x] Mobile/card-overlap responsive hardening added
-- [x] User Profile and Business Settings entry points preserved
+### Built and verified
+- [x] GitHub repository and React/Vite foundation
+- [x] Core workspace: dashboard, invoices, customers, expenses and reports
+- [x] Mobile-first responsive/card-overlap hardening
+- [x] Clickable DONIDEX logo menu
+- [x] User Profile and Business Settings entry points
 - [x] Locked pricing preserved
-- [x] Firebase authentication/data foundation added
-- [ ] Full document editor and print/PDF workflow
-- [ ] Business Hub modules
-- [ ] Multi-business persistence and switching
-- [ ] Backup/recovery integrity workflow
-- [ ] Netlify Functions/serverless API
-- [ ] Email verification delivery configuration
-- [ ] Stripe checkout/webhook migration and live verification
-- [ ] Netlify deployment and production QA
+- [x] Google, Apple and Email authentication foundation
+- [x] Username registration label
+- [x] Show/hide password control
+- [x] Email verification gate
+- [x] Firebase auth/data foundation
+- [x] Multi-business switching foundation
+- [x] Backup/recovery hardening foundation
+- [x] Payment Center with full/partial payment recording and receipts
+- [x] Business Hub: products/services, recurring profiles, payment follow-up and insights
+- [x] Business Hub data included in authenticated per-business cloud sync
+- [x] Capacitor Android packaging
+- [x] Android API 36 enforcement and successful release workflow
+- [x] GitHub Actions → Netlify production deployment workflow
+- [x] Netlify project configured
+- [x] Paystack plan-code configuration in Netlify
 
-### Locked commercial plan
+### Remaining release work
+- [ ] Verify the latest Netlify production deployment end-to-end
+- [ ] Add/recover Paystack Live Secret Key in Netlify without exposing it in chat
+- [ ] Finish full document editor parity: quotation conversion, receipt creation, preview/edit/duplicate, print/PDF and WhatsApp sharing
+- [ ] Harden authenticated cloud sync across every migrated module
+- [ ] Complete secure invoice sharing and payment reminder automation
+- [ ] Production Android signing and signed AAB
+- [ ] Google Play Console registration and release submission when the developer account payment step is funded
+
+## Locked commercial plan
 - Free — NGN 0
 - Premium — NGN 5,000/month or NGN 50,000/year
 - Business / Team — NGN 15,000/month or NGN 150,000/year
 
-### Locked authentication
+## Locked authentication
 - Google
 - Apple
 - Email
@@ -37,9 +52,11 @@ This repository is the new source of truth for the DONIDEX migration away from A
 - Show/hide password
 - No X login
 
-### Support
+## Paystack
+The four locked paid plans use the Paystack plan codes configured in the Netlify production environment. The Paystack secret key remains server-side only.
+
+## Support
 - donidexsupport@gmail.com
 
 ## Development
-
-The application is mobile-first and designed for Netlify deployment. Firebase is used as the provider-neutral authentication and persistence foundation; configuration is supplied through environment variables and never committed to the repository. Secrets must never be committed to this repository.
+The application is mobile-first and designed for Netlify deployment. Firebase is used for authentication and persistence. Environment configuration and secrets are never committed to the repository.
