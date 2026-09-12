@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Apple, Eye, EyeOff, Mail, ShieldCheck, UserPlus } from 'lucide-react';
 import { createUserWithEmailAndPassword, onAuthStateChanged, sendEmailVerification, signInWithEmailAndPassword, signInWithPopup, signOut, updateProfile, type User } from 'firebase/auth';
-import { appleProvider, auth, firebaseConfigured, googleProvider } from './lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { appleProvider, auth, db, firebaseConfigured, googleProvider } from './lib/firebase';
 import App from './App';
 
 const shell: React.CSSProperties = { minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#080808', color: '#fff', padding: 18, fontFamily: 'Inter,system-ui,sans-serif' };
@@ -10,7 +11,7 @@ const input: React.CSSProperties = { width: '100%', boxSizing: 'border-box', pad
 
 export default function AuthGate() {
  const [user, setUser] = useState<User | null>(null); const [ready, setReady] = useState(false); const [mode, setMode] = useState<'signin'|'signup'>('signin'); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [username, setUsername] = useState(''); const [showPassword, setShowPassword] = useState(false); const [busy, setBusy] = useState(false); const [message, setMessage] = useState('');
- useEffect(() => { if (!auth) { setReady(true); return; } return onAuthStateChanged(auth, value => { setUser(value); setReady(true); }); }, []);
+ useEffect(() => { if (!auth) { setReady(true); return; } return onAuthStateChanged(auth, value => { setUser(value); setReady(true); if (value?.emailVerified && db) void setDoc(doc(db, 'userProfiles', value.uid), { uid: value.uid, email: value.email?.toLowerCase() || '', displayName: value.displayName || '', photoURL: value.photoURL || null, providers: value.providerData.map(profile => profile.providerId), updatedAt: new Date().toISOString() }, { merge: true }); }); }, []);
  if (!ready) return <div style={shell}><div style={card}>Loading DONIDEX security…</div></div>;
  if (!firebaseConfigured || !auth) return <App />;
  if (user?.emailVerified) return <App />;
