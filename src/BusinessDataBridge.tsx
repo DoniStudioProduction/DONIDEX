@@ -5,11 +5,11 @@ import { loadWorkspace, loadBusinessData, saveBusinessData, workspaceFromLocalSt
 
 const snapshot = () => {
   const read = (key: string) => { try { const raw = localStorage.getItem(`donidex:${key}`); return raw ? JSON.parse(raw) : undefined; } catch { return undefined; } };
-  return { documents: read('docs') || [], customers: read('customers') || [], expenses: read('expenses') || [], settings: read('settings'), business: read('business'), hubProducts: read('hub_products') || [], hubRecurring: read('hub_recurring') || [] };
+  return { documents: read('docs') || [], customers: read('customers') || [], expenses: read('expenses') || [], settings: read('settings'), business: read('business'), hubProducts: read('hub_products') || [], hubRecurring: read('hub_recurring') || [], receipts: read('receipts') || [] };
 };
 const apply = (data: ReturnType<typeof snapshot>) => {
   const write = (key: string, value: unknown) => { if (value !== undefined) localStorage.setItem(`donidex:${key}`, JSON.stringify(value)); };
-  write('docs', data.documents || []); write('customers', data.customers || []); write('expenses', data.expenses || []); if (data.settings) write('settings', data.settings); if (data.business) write('business', data.business); write('hub_products', data.hubProducts || []); write('hub_recurring', data.hubRecurring || []);
+  write('docs', data.documents || []); write('customers', data.customers || []); write('expenses', data.expenses || []); if (data.settings) write('settings', data.settings); if (data.business) write('business', data.business); write('hub_products', data.hubProducts || []); write('hub_recurring', data.hubRecurring || []); write('receipts', data.receipts || []);
 };
 
 export default function BusinessDataBridge() {
@@ -22,7 +22,7 @@ export default function BusinessDataBridge() {
       const active = workspace.businesses?.find(b => b.id === workspace.activeBusinessId && !b.archived) || workspace.businesses?.find(b => !b.archived) || workspace.businesses?.[0];
       if (!active || stopped) return;
       const remote = await loadBusinessData(userId, active.id);
-      if (remote) { apply({ documents: remote.documents || [], customers: remote.customers || [], expenses: remote.expenses || [], settings: remote.settings, business: active, hubProducts: remote.hubProducts || [], hubRecurring: remote.hubRecurring || [] }); window.setTimeout(() => window.location.reload(), 50); return; }
+      if (remote) { apply({ documents: remote.documents || [], customers: remote.customers || [], expenses: remote.expenses || [], settings: remote.settings, business: active, hubProducts: remote.hubProducts || [], hubRecurring: remote.hubRecurring || [], receipts: remote.receipts || [] }); window.setTimeout(() => window.location.reload(), 50); return; }
       const initial = snapshot(); await saveBusinessData(userId, active.id, initial); ready = true; last = JSON.stringify(initial);
     };
     const unsubscribe = onAuthStateChanged(auth, user => { ready = false; last = ''; if (!user?.emailVerified) return; void start(user.uid); });
