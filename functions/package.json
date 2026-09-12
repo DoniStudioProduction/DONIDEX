@@ -1,1 +1,0 @@
-{"name":"donidex-paystack-functions","private":true,"engines":{"node":"20"},"main":"index.js","dependencies":{"firebase-admin":"latest","firebase-functions":"latest"}}
