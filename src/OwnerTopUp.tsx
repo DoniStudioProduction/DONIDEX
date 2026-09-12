@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { addDoc, collection, getDocs, limit, query, serverTimestamp, where } from 'firebase/firestore';
+import { collection, doc, getDocs, limit, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import { auth, db } from './lib/firebase';
 
 const OWNER_EMAIL = 'donistudioproduction@gmail.com';
@@ -18,54 +18,25 @@ export default function OwnerTopUp({ onClose }: { onClose: () => void }) {
   const [proofReference, setProofReference] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
-
   const durationLabel = useMemo(() => interval === 'month' ? `${duration} month${duration === 1 ? '' : 's'}` : `${duration} year${duration === 1 ? '' : 's'}`, [duration, interval]);
-
   if (!isOwner || !db) return null;
-
   const search = async () => {
     setMessage(''); setSelected(null);
     const normalized = email.trim().toLowerCase();
     if (!normalized) return setMessage('Enter the customer email used for the DONIDEX account.');
-    try {
-      const snap = await getDocs(query(collection(db, 'userProfiles'), where('email', '==', normalized), limit(10)));
-      const found = snap.docs.map(d => d.data() as Profile);
-      setResults(found);
-      if (!found.length) setMessage('No matching DONIDEX account found.');
-    } catch (e) { setMessage(e instanceof Error ? e.message : 'Could not search the user directory.'); }
+    try { const snap = await getDocs(query(collection(db, 'userProfiles'), where('email', '==', normalized), limit(10))); const found = snap.docs.map(d => d.data() as Profile); setResults(found); if (!found.length) setMessage('No matching DONIDEX account found.'); } catch (e) { setMessage(e instanceof Error ? e.message : 'Could not search the user directory.'); }
   };
-
   const grant = async () => {
     if (!selected) return setMessage('Select the customer account first.');
     if (!proofReference.trim()) return setMessage('Add the payment receipt/reference used to verify the payment.');
     setBusy(true); setMessage('');
     try {
-      const start = new Date();
-      const end = new Date(start);
+      const start = new Date(); const end = new Date(start);
       if (interval === 'month') end.setMonth(end.getMonth() + duration); else end.setFullYear(end.getFullYear() + duration);
-      await addDoc(collection(db, 'ownerTopUps'), {
-        targetUid: selected.uid,
-        targetEmail: selected.email || email.trim().toLowerCase(),
-        targetDisplayName: selected.displayName || '',
-        providers: selected.providers || [],
-        plan,
-        interval,
-        duration,
-        startsAt: start.toISOString(),
-        endsAt: end.toISOString(),
-        reason: reason.trim(),
-        proofReference: proofReference.trim(),
-        createdByUid: owner?.uid || '',
-        createdByEmail: OWNER_EMAIL,
-        createdAt: serverTimestamp(),
-        source: 'owner-manual-recovery',
-      });
-      setMessage(`${plan} access granted for ${durationLabel}.`);
-      setProofReference('');
-    } catch (e) { setMessage(e instanceof Error ? e.message : 'Could not save the manual top-up.'); }
-    finally { setBusy(false); }
+      await setDoc(doc(db, 'ownerTopUps', selected.uid), { targetUid: selected.uid, targetEmail: selected.email || email.trim().toLowerCase(), targetDisplayName: selected.displayName || '', providers: selected.providers || [], plan, interval, duration, startsAt: start.toISOString(), endsAt: end.toISOString(), reason: reason.trim(), proofReference: proofReference.trim(), createdByUid: owner?.uid || '', createdByEmail: OWNER_EMAIL, createdAt: serverTimestamp(), source: 'owner-manual-recovery' }, { merge: true });
+      setMessage(`${plan} access granted for ${durationLabel}.`); setProofReference('');
+    } catch (e) { setMessage(e instanceof Error ? e.message : 'Could not save the manual top-up.'); } finally { setBusy(false); }
   };
-
   return <div className="owner-topup-backdrop" onClick={onClose}><section className="owner-topup-modal" onClick={e => e.stopPropagation()}>
     <div className="modal-head"><div><p className="eyebrow">OWNER CONTROL</p><h2>Owner Top-Up</h2><p className="muted">Recover a verified customer subscription without waiting for Paystack activation.</p></div><button className="icon-btn" onClick={onClose}>×</button></div>
     <div className="owner-warning">Only <strong>{OWNER_EMAIL}</strong> can use this recovery console. Verify the customer's payment proof before granting access.</div>
