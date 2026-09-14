@@ -11,6 +11,7 @@ import PaymentCenter from './PaymentCenter';
 import BusinessHub from './BusinessHub';
 import SharedDocument from './SharedDocument';
 import './index.css';
+import './app-enhancements.css';
 import './billing.css';
 import './business.css';
 import './team.css';
