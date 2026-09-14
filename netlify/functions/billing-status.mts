@@ -6,13 +6,14 @@ const planNames = new Map([
   [process.env.PAYSTACK_BUSINESS_MONTHLY_PLAN_CODE, 'Business / Team'],
   [process.env.PAYSTACK_BUSINESS_YEARLY_PLAN_CODE, 'Business / Team'],
 ].filter(([id]) => Boolean(id)) as [string, string][]);
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default async (request: Request) => {
   if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405, headers: { allow: 'GET' } });
   const secret = process.env.PAYSTACK_SECRET_KEY;
   if (!secret) return Response.json({ error: 'Paystack billing is not configured on this deployment.' }, { status: 503 });
-  const email = new URL(request.url).searchParams.get('email');
-  if (!email) return Response.json({ error: 'Email is required.' }, { status: 400 });
+  const email = new URL(request.url).searchParams.get('email')?.trim().toLowerCase() || '';
+  if (!emailPattern.test(email) || email.length > 254) return Response.json({ error: 'A valid account email is required.' }, { status: 400 });
   const response = await fetch(`https://api.paystack.co/customer/${encodeURIComponent(email)}`, { headers: { Authorization: `Bearer ${secret}` } });
   const data = await response.json().catch(() => null);
   if (response.status === 404) return Response.json({ plan: 'Free', status: 'none', entitlementActive: false, history: [] });
