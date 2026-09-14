@@ -1,66 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, firebaseConfigured } from './lib/firebase';
-import { applyWorkspaceToLocalStorage, loadWorkspace, saveBusiness, saveWorkspace, workspaceFromLocalStorage } from './lib/workspace';
+import { applyWorkspaceToLocalStorage, loadWorkspaceForUser, saveBusiness, saveWorkspace, workspaceFromLocalStorage } from './lib/workspace';
 
-const SNAPSHOT_KEY = 'donidex:cloud-snapshot';
-const RESTORE_KEY = 'donidex:cloud-restore-user';
-const watchedKeys = ['profile', 'business', 'docs', 'customers', 'expenses', 'settings', 'hub_products', 'hub_recurring', 'products', 'recurring'];
+const SNAPSHOT_KEY='donidex:cloud-snapshot';const RESTORE_KEY='donidex:cloud-restore-user';const watchedKeys=['profile','business','docs','customers','expenses','settings','hub_products','hub_recurring','products','recurring'];
+const snapshotText=()=>JSON.stringify(watchedKeys.map(key=>[key,localStorage.getItem(`donidex:${key}`)] as const));
 
-const readSnapshot = () => watchedKeys.map(key => [key, localStorage.getItem(`donidex:${key}`)] as const);
-const snapshotText = () => JSON.stringify(readSnapshot());
-
-export default function WorkspaceBridge() {
-  const userRef = useRef<string | null>(null);
-  const lastSaved = useRef('');
-
-  useEffect(() => {
-    if (!firebaseConfigured || !auth) return;
-    let timer: number | undefined;
-    const stop = onAuthStateChanged(auth, async user => {
-      if (!user?.emailVerified) { userRef.current = null; if (timer) window.clearInterval(timer); return; }
-      userRef.current = user.uid;
-      try {
-        const remote = await loadWorkspace(user.uid);
-        if (remote) {
-          applyWorkspaceToLocalStorage(remote);
-          lastSaved.current = snapshotText();
-          if (sessionStorage.getItem(RESTORE_KEY) !== user.uid) {
-            sessionStorage.setItem(RESTORE_KEY, user.uid);
-            window.location.reload();
-            return;
-          }
-        } else {
-          const local = workspaceFromLocalStorage();
-          await saveWorkspace(user.uid, local);
-          const business = local.businesses?.[0];
-          if (business) await saveBusiness(user.uid, business.id, business);
-          applyWorkspaceToLocalStorage(local);
-          lastSaved.current = snapshotText();
-        }
-      } catch (error) {
-        console.warn('DONIDEX cloud workspace sync unavailable:', error);
-      }
-      if (timer) window.clearInterval(timer);
-      timer = window.setInterval(async () => {
-        const uid = userRef.current;
-        if (!uid) return;
-        const current = snapshotText();
-        if (current === lastSaved.current) return;
-        try {
-          const local = workspaceFromLocalStorage();
-          await saveWorkspace(uid, local);
-          const business = local.businesses?.[0];
-          if (business) await saveBusiness(uid, business.id, business);
-          localStorage.setItem(SNAPSHOT_KEY, current);
-          lastSaved.current = current;
-        } catch (error) {
-          console.warn('DONIDEX cloud workspace save unavailable:', error);
-        }
-      }, 2000);
-    });
-    return () => { stop(); if (timer) window.clearInterval(timer); };
-  }, []);
-
-  return null;
-}
+export default function WorkspaceBridge(){const userRef=useRef<string|null>(null);const ownerRef=useRef<string|null>(null);const canWriteRef=useRef(false);const lastSaved=useRef('');useEffect(()=>{if(!firebaseConfigured||!auth)return;let timer:number|undefined;const stop=onAuthStateChanged(auth,async user=>{if(!user?.emailVerified){userRef.current=null;ownerRef.current=null;canWriteRef.current=false;if(timer)window.clearInterval(timer);return;}userRef.current=user.uid;try{const access=await loadWorkspaceForUser(user.uid);ownerRef.current=access.ownerUid;canWriteRef.current=!access.membership||access.membership.role==='admin';if(access.workspace){applyWorkspaceToLocalStorage(access.workspace);lastSaved.current=snapshotText();if(sessionStorage.getItem(RESTORE_KEY)!==user.uid){sessionStorage.setItem(RESTORE_KEY,user.uid);window.location.reload();return;}}else{const local=workspaceFromLocalStorage();if(canWriteRef.current){await saveWorkspace(user.uid,local);const business=local.businesses?.[0];if(business)await saveBusiness(user.uid,business.id,business);}applyWorkspaceToLocalStorage(local);lastSaved.current=snapshotText();}}catch(error){console.warn('DONIDEX cloud workspace sync unavailable:',error)}if(timer)window.clearInterval(timer);timer=window.setInterval(async()=>{const uid=userRef.current;const ownerUid=ownerRef.current;if(!uid||!ownerUid||!canWriteRef.current)return;const current=snapshotText();if(current===lastSaved.current)return;try{const local=workspaceFromLocalStorage();await saveWorkspace(ownerUid,local);const business=local.businesses?.[0];if(business)await saveBusiness(ownerUid,business.id,business);localStorage.setItem(SNAPSHOT_KEY,current);lastSaved.current=current;}catch(error){console.warn('DONIDEX cloud workspace save unavailable:',error)}},2000);});return()=>{stop();if(timer)window.clearInterval(timer)}},[]);return null;}
