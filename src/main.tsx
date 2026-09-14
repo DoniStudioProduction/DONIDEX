@@ -21,6 +21,7 @@ import './growth.css';
 import './payment.css';
 import './businessHub.css';
 import './shared.css';
+import './share-app.css';
 
 class AppErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
  state = { failed: false };
