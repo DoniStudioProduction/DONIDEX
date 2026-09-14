@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { addDoc, collection, doc, getDocs, limit, query, runTransaction, serverTimestamp, where } from 'firebase/firestore';
+import { collection, doc, getDocs, limit, query, runTransaction, serverTimestamp, where } from 'firebase/firestore';
 import { auth, db } from './lib/firebase';
 
 type Profile = { uid: string; email?: string; displayName?: string; providers?: string[]; photoURL?: string | null };
@@ -101,16 +101,36 @@ export default function OwnerTopUp({ onClose }: { onClose: () => void }) {
     if (!selected) return setMessage('Select the customer account first.');
     if (!reason.trim()) return setMessage('Add a reason for the subscription recovery.');
     if (!proofReference.trim()) return setMessage('Add the payment receipt/reference used to verify the recovery.');
-    const end = new Date();
+    const startsAt = new Date();
+    const end = new Date(startsAt);
     if (recoveryInterval === 'year') end.setFullYear(end.getFullYear() + durationNumber);
     else end.setMonth(end.getMonth() + durationNumber);
     setBusy(true); setMessage('');
     try {
-      const ref = await addDoc(collection(db, 'ownerTopUps'), { targetUid: selected.uid, targetEmail: selected.email || '', plan: recoveryPlan, interval: recoveryInterval, duration: durationNumber, startsAt: new Date().toISOString(), endsAt: end.toISOString(), reason: reason.trim(), proofReference: proofReference.trim(), createdByUid: owner.uid, createdByEmail: OWNER_EMAIL, createdAt: serverTimestamp(), source: 'owner-manual-recovery' });
-      setHistory(h => [{ id: ref.id, kind: 'subscription', targetUid: selected.uid, targetEmail: selected.email || '', plan: recoveryPlan, interval: recoveryInterval, duration: durationNumber, reason: reason.trim(), proofReference: proofReference.trim(), endsAt: end.toISOString() }, ...h]);
-      setMessage(`${recoveryPlan} ${recoveryInterval} subscription recovery recorded for ${durationNumber} ${recoveryInterval}${durationNumber === 1 ? '' : 's'}.`);
+      const profileRef = doc(db, 'userProfiles', selected.uid);
+      const auditRef = doc(collection(db, 'ownerTopUps'));
+      const override = {
+        plan: recoveryPlan,
+        interval: recoveryInterval,
+        duration: durationNumber,
+        status: 'active',
+        startsAt: startsAt.toISOString(),
+        endsAt: end.toISOString(),
+        reason: reason.trim(),
+        proofReference: proofReference.trim(),
+        grantedByUid: owner.uid,
+        grantedByEmail: OWNER_EMAIL,
+        grantedAt: serverTimestamp(),
+        source: 'originator-manual-recovery'
+      };
+      await runTransaction(db, async tx => {
+        tx.set(profileRef, { subscriptionOverride: override }, { merge: true });
+        tx.set(auditRef, { targetUid: selected.uid, targetEmail: selected.email || '', plan: recoveryPlan, interval: recoveryInterval, duration: durationNumber, startsAt: startsAt.toISOString(), endsAt: end.toISOString(), status: 'active', reason: reason.trim(), proofReference: proofReference.trim(), createdByUid: owner.uid, createdByEmail: OWNER_EMAIL, createdAt: serverTimestamp(), source: 'owner-manual-recovery' });
+      });
+      setHistory(h => [{ id: auditRef.id, kind: 'subscription', targetUid: selected.uid, targetEmail: selected.email || '', plan: recoveryPlan, interval: recoveryInterval, duration: durationNumber, reason: reason.trim(), proofReference: proofReference.trim(), endsAt: end.toISOString() }, ...h]);
+      setMessage(`${recoveryPlan} ${recoveryInterval} entitlement activated for ${durationNumber} ${recoveryInterval}${durationNumber === 1 ? '' : 's'}.`);
       setProofReference('');
-    } catch (e) { setMessage(e instanceof Error ? e.message : 'Could not record subscription recovery.'); }
+    } catch (e) { setMessage(e instanceof Error ? e.message : 'Could not activate subscription recovery.'); }
     finally { setBusy(false); }
   };
 
