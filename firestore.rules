@@ -13,11 +13,9 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read, create, update, delete: if signedInAs(userId);
-
       match /businesses/{businessId} {
         allow read, create, update, delete: if signedInAs(userId);
       }
-
       match /{document=**} {
         allow read, write: if signedInAs(userId);
       }
@@ -25,20 +23,23 @@ service cloud.firestore {
 
     match /userProfiles/{userId} {
       allow read: if signedInAs(userId) || isOwner();
-      allow create: if signedInAs(userId);
-      allow update: if signedInAs(userId) || isOwner();
+      allow create, update: if signedInAs(userId) || isOwner();
       allow delete: if signedInAs(userId) || isOwner();
     }
 
-    match /ownerTopUps/{documentId} {
-      allow read: if isOwner() || (request.auth != null && request.auth.token.email_verified == true && resource.data.targetUid == request.auth.uid);
+    match /ownerTopUps/{userId} {
+      allow read: if isOwner() || signedInAs(userId);
       allow create, update, delete: if isOwner();
+    }
+
+    match /ownerSubscriptionAudit/{auditId} {
+      allow read, create: if isOwner();
+      allow update, delete: if false;
     }
 
     match /userWallets/{userId} {
       allow read: if signedInAs(userId) || isOwner();
-      allow create, update: if isOwner();
-      allow delete: if isOwner();
+      allow create, update, delete: if isOwner();
     }
 
     match /ownerCreditTransactions/{transactionId} {
