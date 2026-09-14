@@ -21,5 +21,7 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install
-      - name: Build application
+      - name: TypeScript and production build
         run: npm run build
+      - name: Verify build output
+        run: test -f dist/index.html
