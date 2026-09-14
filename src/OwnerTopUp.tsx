@@ -17,12 +17,16 @@ export default function OwnerTopUp({ onClose }: { onClose: () => void }) {
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('Customer payment verified; Paystack credit delayed or callback issue.');
   const [proofReference, setProofReference] = useState('');
+  const [recoveryPlan, setRecoveryPlan] = useState('Premium');
+  const [recoveryInterval, setRecoveryInterval] = useState<'month' | 'year'>('month');
+  const [recoveryDuration, setRecoveryDuration] = useState('1');
   const [balance, setBalance] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [history, setHistory] = useState<any[]>([]);
 
   const amountNumber = useMemo(() => Math.max(0, Number(amount.replace(/,/g, '')) || 0), [amount]);
+  const durationNumber = useMemo(() => Math.max(1, Math.floor(Number(recoveryDuration) || 1)), [recoveryDuration]);
   if (!isOwner || !db) return null;
 
   const search = async () => {
@@ -84,12 +88,30 @@ export default function OwnerTopUp({ onClose }: { onClose: () => void }) {
 
   const grantSubscription = async () => {
     if (!selected) return setMessage('Select the customer account first.');
-    const plan = 'Premium';
-    const end = new Date(); end.setMonth(end.getMonth() + 1);
+    if (!reason.trim()) return setMessage('Add a reason for the subscription recovery.');
+    if (!proofReference.trim()) return setMessage('Add the payment receipt/reference used to verify the recovery.');
+    const end = new Date();
+    if (recoveryInterval === 'year') end.setFullYear(end.getFullYear() + durationNumber);
+    else end.setMonth(end.getMonth() + durationNumber);
     setBusy(true); setMessage('');
     try {
-      await addDoc(collection(db, 'ownerTopUps'), { targetUid: selected.uid, targetEmail: selected.email || '', plan, interval: 'month', duration: 1, startsAt: new Date().toISOString(), endsAt: end.toISOString(), reason: reason.trim(), proofReference: proofReference.trim(), createdByUid: owner.uid, createdByEmail: OWNER_EMAIL, createdAt: serverTimestamp(), source: 'owner-manual-recovery' });
-      setMessage('Premium access recovery recorded for 1 month.');
+      await addDoc(collection(db, 'ownerTopUps'), {
+        targetUid: selected.uid,
+        targetEmail: selected.email || '',
+        plan: recoveryPlan,
+        interval: recoveryInterval,
+        duration: durationNumber,
+        startsAt: new Date().toISOString(),
+        endsAt: end.toISOString(),
+        reason: reason.trim(),
+        proofReference: proofReference.trim(),
+        createdByUid: owner.uid,
+        createdByEmail: OWNER_EMAIL,
+        createdAt: serverTimestamp(),
+        source: 'owner-manual-recovery'
+      });
+      setMessage(`${recoveryPlan} ${recoveryInterval} subscription recovery recorded for ${durationNumber} ${recoveryInterval}${durationNumber === 1 ? '' : 's'}.`);
+      setProofReference('');
     } catch (e) { setMessage(e instanceof Error ? e.message : 'Could not record subscription recovery.'); }
     finally { setBusy(false); }
   };
@@ -101,7 +123,7 @@ export default function OwnerTopUp({ onClose }: { onClose: () => void }) {
 
     {tab === 'users' && <div><div className="owner-search"><label>Search registered user by email<input value={email} onChange={e => setEmail(e.target.value)} placeholder="customer@example.com" /></label><button className="primary" onClick={() => void search()} disabled={busy}>Search users</button></div>{results.length > 0 && <div className="owner-results">{results.map(profile => <button className="owner-result" key={profile.uid} onClick={() => void selectUser(profile)}><div><strong>{profile.displayName || 'DONIDEX User'}</strong><span>{profile.email || 'No email'}</span></div><small>{(profile.providers || []).join(', ') || 'Account'}</small></button>)}</div>}</div>}
 
-    {tab === 'credit' && selected && <div><div className="owner-selected"><strong>{selected.displayName || 'DONIDEX User'}</strong><span>{selected.email}</span><small>UID: {selected.uid}</small><b>Current wallet: {balance === null ? 'Loading…' : money(balance)}</b></div><div className="owner-form-grid"><label>Credit amount (₦)<input inputMode="numeric" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" /></label><label>Payment reference<input value={proofReference} onChange={e => setProofReference(e.target.value)} placeholder="Paystack/transfer/receipt reference" /></label></div><label>Reason<textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} /></label><div className="owner-actions"><button className="secondary" onClick={() => void grantSubscription()} disabled={busy}>Recover 1-month Premium</button><button className="primary" onClick={() => void grantCredit()} disabled={busy}>{busy ? 'Processing…' : `Credit ${money(amountNumber)}`}</button></div>{history.length > 0 && <div className="receipt-mini"><p className="eyebrow">RECENT MANUAL CREDITS</p>{history.slice(0,5).map(item => <span key={item.id}>{money(item.amount)} · {item.proofReference || 'manual'} · {item.reason || 'Originator credit'}</span>)}</div>}</div>}
+    {tab === 'credit' && selected && <div><div className="owner-selected"><strong>{selected.displayName || 'DONIDEX User'}</strong><span>{selected.email}</span><small>UID: {selected.uid}</small><b>Current wallet: {balance === null ? 'Loading…' : money(balance)}</b></div><div className="owner-form-grid"><label>Credit amount (₦)<input inputMode="numeric" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" /></label><label>Payment reference<input value={proofReference} onChange={e => setProofReference(e.target.value)} placeholder="Paystack/transfer/receipt reference" /></label></div><label>Reason<textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} /></label><div className="owner-form-grid"><label>Recovery plan<select value={recoveryPlan} onChange={e => setRecoveryPlan(e.target.value)}><option>Premium</option><option>Business/Team</option></select></label><label>Billing interval<select value={recoveryInterval} onChange={e => setRecoveryInterval(e.target.value as 'month' | 'year')}><option value="month">Monthly</option><option value="year">Yearly</option></select></label><label>Duration<input type="number" min="1" step="1" value={recoveryDuration} onChange={e => setRecoveryDuration(e.target.value)} /></label></div><div className="owner-actions"><button className="secondary" onClick={() => void grantSubscription()} disabled={busy}>Recover selected subscription</button><button className="primary" onClick={() => void grantCredit()} disabled={busy}>{busy ? 'Processing…' : `Credit ${money(amountNumber)}`}</button></div>{history.length > 0 && <div className="receipt-mini"><p className="eyebrow">RECENT MANUAL CREDITS</p>{history.slice(0,5).map(item => <span key={item.id}>{money(item.amount)} · {item.proofReference || 'manual'} · {item.reason || 'Originator credit'}</span>)}</div>}</div>}
 
     {tab === 'transactions' && <div className="table-list">{history.length ? history.map(item => <div className="table-row" key={item.id}><div><strong>{item.targetEmail || item.targetUid}</strong><span>{item.reason || 'Manual credit'}</span></div><b>{money(item.amount)}</b><em>Originator credit</em><span>{item.proofReference || 'No reference'}</span></div>) : <p className="muted">No manual-credit records found.</p>}</div>}
     {message && <div className="owner-message">{message}</div>}
