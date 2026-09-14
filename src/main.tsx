@@ -10,6 +10,7 @@ import GrowthTools from './GrowthTools';
 import PaymentCenter from './PaymentCenter';
 import BusinessHub from './BusinessHub';
 import SharedDocument from './SharedDocument';
+import ShareApp from './ShareApp';
 import { track } from './lib/telemetry';
 import './index.css';
 import './app-enhancements.css';
@@ -47,6 +48,7 @@ createRoot(document.getElementById('root')!).render(
     <PaymentCenter />
     <BillingCenter />
     <BusinessHub />
+    <ShareApp />
    </>}
   </AppErrorBoundary>
  </React.StrictMode>
