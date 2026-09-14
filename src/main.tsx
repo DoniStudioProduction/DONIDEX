@@ -9,6 +9,7 @@ import TeamManagement from './TeamManagement';
 import GrowthTools from './GrowthTools';
 import PaymentCenter from './PaymentCenter';
 import BusinessHub from './BusinessHub';
+import SharedDocument from './SharedDocument';
 import './index.css';
 import './billing.css';
 import './business.css';
@@ -21,4 +22,20 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => undefined));
 }
 
-createRoot(document.getElementById('root')!).render(<React.StrictMode><WorkspaceBridge /><BusinessDataBridge /><AuthGate /><BusinessSwitcher /><TeamManagement /><GrowthTools /><PaymentCenter /><BillingCenter /><BusinessHub /></React.StrictMode>);
+const shareToken = new URLSearchParams(window.location.search).get('share');
+
+createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    {shareToken ? <SharedDocument token={shareToken} /> : <>
+      <WorkspaceBridge />
+      <BusinessDataBridge />
+      <AuthGate />
+      <BusinessSwitcher />
+      <TeamManagement />
+      <GrowthTools />
+      <PaymentCenter />
+      <BillingCenter />
+      <BusinessHub />
+    </>}
+  </React.StrictMode>
+);
