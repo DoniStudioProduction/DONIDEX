@@ -1,60 +1,26 @@
 name: DONIDEX Build
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+
 permissions:
-  contents: write
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Apply document workflow parity
-        shell: bash
-        run: python3 - <<'PY'
-from pathlib import Path
-p=Path('src/App.tsx'); s=p.read_text()
-s=s.replace("import OwnerTopUp from './OwnerTopUp';", "import OwnerTopUp from './OwnerTopUp';\nimport DocumentWorkflow from './DocumentWorkflow';")
-s=s.replace("type Doc = { id: string; number: string; customer: string; total: number; status: 'Draft' | 'Sent' | 'Paid' | 'Overdue'; due: string };", "type Doc = { id: string; number: string; customer: string; total: number; status: 'Draft' | 'Sent' | 'Paid' | 'Overdue'; due: string; kind?: 'Invoice' | 'Quotation' };\ntype Receipt = { id: string; number: string; invoiceNumber: string; customer: string; amount: number; date: string; reference: string };")
-s=s.replace("const [docs, setDocs] = useState<Doc[]>(() => load('docs', seedDocs));", "const [docs, setDocs] = useState<Doc[]>(() => load('docs', seedDocs));\n const [receipts, setReceipts] = useState<Receipt[]>(() => load('receipts', []));\n const [selectedDoc, setSelectedDoc] = useState<Doc | null>(null);")
-s=s.replace("useEffect(() => persist('docs', docs), [docs]);", "useEffect(() => persist('docs', docs), [docs]); useEffect(() => persist('receipts', receipts), [receipts]);")
-s=s.replace("</div>{modal === 'ownerTopUp' && <OwnerTopUp onClose={() => setModal(null)} />}\n}", "{modal === 'ownerTopUp' && <OwnerTopUp onClose={() => setModal(null)} />}\n </div>}\n}")
-old="{view === 'Invoices' && <section className=\"panel\"><div className=\"panel-head\"><div><p className=\"eyebrow\">DOCUMENTS</p><h2>Invoices & receipts</h2></div><button className=\"primary\" onClick={addInvoice}><FilePlus2 size={15}/> New invoice</button></div><div className=\"table-list\">{docs.map(d => <div className=\"table-row\" key={d.id}><div><strong>{d.number}</strong><span>{d.customer}</span></div><b>{money(d.total)}</b><em className={`status status-${d.status.toLowerCase().replace(' ', '-')}`}>{d.status}</em><span>{d.due}</span><button className=\"icon-btn\" onClick={() => { setDocs(x => x.filter(y => y.id !== d.id)); setNotice('Document deleted.'); }} aria-label={`Delete ${d.number}`}><Trash2 size={15}/></button></div>)}</div></section>}"
-new="{view === 'Invoices' && <section className=\"panel\"><div className=\"panel-head\"><div><p className=\"eyebrow\">DOCUMENT WORKFLOW</p><h2>Invoices, quotations & receipts</h2></div><div className=\"actions\"><button className=\"secondary\" onClick={() => { const n = `QUO-${String(docs.filter(x => x.kind === 'Quotation').length + 1).padStart(4, '0')}`; setDocs(d => [{ id: crypto.randomUUID(), number: n, customer: 'New Customer', total: 0, status: 'Draft', due: new Date().toISOString().slice(0, 10), kind: 'Quotation' }, ...d]); setNotice(`${n} created as quotation.`); }}>New quotation</button><button className=\"primary\" onClick={addInvoice}><FilePlus2 size={15}/> New invoice</button></div></div><div className=\"table-list\">{docs.map(d => <div className=\"table-row\" key={d.id}><div><strong>{d.number}</strong><span>{d.kind || 'Invoice'} · {d.customer}</span></div><b>{money(d.total)}</b><em className={`status status-${d.status.toLowerCase().replace(' ', '-')}`}>{d.status}</em><span>{d.due}</span><div className=\"actions\"><button className=\"ghost\" onClick={() => setSelectedDoc(d)}>Open</button><button className=\"icon-btn\" onClick={() => { setDocs(x => x.filter(y => y.id !== d.id)); setNotice('Document deleted.'); }} aria-label={`Delete ${d.number}`}><Trash2 size={15}/></button></div></div>)}</div>{selectedDoc && <DocumentWorkflow doc={selectedDoc} docs={docs} setDocs={setDocs} receipts={receipts} setReceipts={setReceipts} onClose={() => setSelectedDoc(null)} money={money}/>}</section>}"
-if old in s: s=s.replace(old,new)
-p.write_text(s)
-PY
-      - name: Write document workflow component
-        shell: bash
-        run: |
-          test -f src/DocumentWorkflow.tsx || cat > src/DocumentWorkflow.tsx <<'EOF'
-import { useMemo, useState } from 'react';
-import { Copy, MessageCircle, Pencil, Printer, ReceiptText, X } from 'lucide-react';
-type Doc={id:string;number:string;customer:string;total:number;status:'Draft'|'Sent'|'Paid'|'Overdue';due:string;kind?:'Invoice'|'Quotation'};
-type Receipt={id:string;number:string;invoiceNumber:string;customer:string;amount:number;date:string;reference:string};
-export default function DocumentWorkflow({doc,docs,setDocs,receipts,setReceipts,onClose,money}:{doc:Doc;docs:Doc[];setDocs:(v:any)=>void;receipts:Receipt[];setReceipts:(v:any)=>void;onClose:()=>void;money:(n:number)=>string}){
- const [editing,setEditing]=useState(false); const [draft,setDraft]=useState(doc); const [notice,setNotice]=useState('');
- const save=()=>{setDocs((items:Doc[])=>items.map(x=>x.id===doc.id?draft:x));setNotice('Document saved.');setEditing(false)};
- const duplicate=()=>{const copy={...draft,id:crypto.randomUUID(),number:`${draft.kind==='Quotation'?'QUO':'INV'}-${String(docs.length+1).padStart(4,'0')}`,status:'Draft' as const};setDocs((items:Doc[])=>[copy,...items]);setDraft(copy);setNotice(`${copy.number} duplicated.`)};
- const convert=()=>{const invoice={...draft,id:crypto.randomUUID(),number:`INV-${String(docs.filter(x=>x.kind==='Invoice').length+1).padStart(4,'0')}`,kind:'Invoice' as const,status:'Draft' as const};setDocs((items:Doc[])=>[invoice,...items]);setDraft(invoice);setNotice(`${draft.number} converted to ${invoice.number}.`)};
- const makeReceipt=()=>{if(draft.status!=='Paid'){setNotice('Receipt creation requires a paid invoice.');return}const r={id:crypto.randomUUID(),number:`RCT-${String(receipts.length+1).padStart(4,'0')}`,invoiceNumber:draft.number,customer:draft.customer,amount:draft.total,date:new Date().toISOString().slice(0,10),reference:`PAY-${Date.now()}`};setReceipts((items:Receipt[])=>[r,...items]);setNotice(`${r.number} created.`)};
- const share=()=>{const text=`DONIDEX ${draft.kind||'Invoice'} ${draft.number}%0ACustomer: ${draft.customer}%0ATotal: ${money(draft.total)}%0AStatus: ${draft.status}`;window.open(`https://wa.me/?text=${text}`,'_blank','noopener,noreferrer')};
- const print=()=>window.print(); const title=useMemo(()=>draft.kind==='Quotation'?'Quotation':'Invoice',[draft.kind]);
- return <div className=\"modal-backdrop\" onClick={onClose}><div className=\"modal document-modal\" onClick={e=>e.stopPropagation()}><div className=\"modal-head\"><div><p className=\"eyebrow\">DOCUMENT PREVIEW</p><h2>{title} {draft.number}</h2></div><button className=\"icon-btn\" onClick={onClose}><X size={18}/></button></div><div className=\"document-preview\"><div className=\"doc-brand\">DONIDEX</div><h3>{title}</h3><p><b>Customer:</b> {draft.customer}</p><p><b>Status:</b> {draft.status}</p><p><b>Due:</b> {draft.due}</p><div className=\"doc-total\">{money(draft.total)}</div></div>{editing?<div className=\"form-grid\"><label>Customer<input value={draft.customer} onChange={e=>setDraft({...draft,customer:e.target.value})}/></label><label>Total<input type=\"number\" value={draft.total} onChange={e=>setDraft({...draft,total:Number(e.target.value)})}/></label><label>Due date<input type=\"date\" value={draft.due} onChange={e=>setDraft({...draft,due:e.target.value})}/></label><button className=\"primary\" onClick={save}>Save changes</button></div>:<div className=\"actions document-actions\"><button className=\"secondary\" onClick={()=>setEditing(true)}><Pencil size={15}/> Edit</button><button className=\"secondary\" onClick={duplicate}><Copy size={15}/> Duplicate</button>{draft.kind==='Quotation'&&<button className=\"secondary\" onClick={convert}>Convert to invoice</button>}{draft.kind!=='Quotation'&&<button className=\"secondary\" onClick={makeReceipt}><ReceiptText size={15}/> Receipt</button>}<button className=\"secondary\" onClick={print}><Printer size={15}/> Print / PDF</button><button className=\"primary\" onClick={share}><MessageCircle size={15}/> WhatsApp</button></div>}{notice&&<p className=\"notice\">{notice}</p>}<div className=\"receipt-mini\"><p className=\"eyebrow\">RECENT RECEIPTS</p>{receipts.slice(0,3).map(r=><span key={r.id}>{r.number} · {r.invoiceNumber} · {money(r.amount)}</span>)}</div></div></div>
-}
-EOF
-      - name: Commit patched source
-        shell: bash
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/App.tsx src/DocumentWorkflow.tsx
-          git diff --cached --quiet || git commit -m '[document-parity-patch] Build document workflow parity'
-          git push || true
-      - run: npm install
-      - run: npm run build
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build application
+        run: npm run build
