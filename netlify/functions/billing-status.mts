@@ -15,14 +15,27 @@ export default async (request: Request) => {
   if (!email) return Response.json({ error: 'Email is required.' }, { status: 400 });
   const response = await fetch(`https://api.paystack.co/customer/${encodeURIComponent(email)}`, { headers: { Authorization: `Bearer ${secret}` } });
   const data = await response.json().catch(() => null);
-  if (response.status === 404) return Response.json({ plan: 'Free', status: 'none', entitlementActive: false });
+  if (response.status === 404) return Response.json({ plan: 'Free', status: 'none', entitlementActive: false, history: [] });
   if (!response.ok || !data?.status) return Response.json({ error: data?.message || 'Could not read Paystack customer billing.' }, { status: 502 });
   const subscriptions = Array.isArray(data.data?.subscriptions) ? data.data.subscriptions : [];
+  const history = subscriptions.map((s: any) => {
+    const planCode = s.plan?.plan_code || s.plan?.code || s.plan?.id || '';
+    return {
+      id: s.subscription_code || s.id || planCode,
+      plan: planNames.get(String(planCode)) || s.plan?.name || 'Paid',
+      status: String(s.status || 'unknown').toLowerCase(),
+      interval: s.plan?.interval || null,
+      amount: Number(s.amount || s.plan?.amount || 0),
+      currency: s.currency || 'NGN',
+      start: s.start || s.createdAt || null,
+      nextPayment: s.next_payment_date || null,
+    };
+  }).sort((a: any, b: any) => String(b.start || '').localeCompare(String(a.start || '')));
   const preferred = subscriptions.find((s: any) => ['active', 'non-renewing', 'attention'].includes(String(s.status).toLowerCase())) || subscriptions[0];
-  if (!preferred) return Response.json({ plan: 'Free', status: 'none', entitlementActive: false, customerId: data.data?.customer_code || null });
+  if (!preferred) return Response.json({ plan: 'Free', status: 'none', entitlementActive: false, customerId: data.data?.customer_code || null, history });
   const planCode = preferred.plan?.plan_code || preferred.plan?.code || preferred.plan?.id || '';
   const status = String(preferred.status || 'unknown').toLowerCase();
-  return Response.json({ plan: planNames.get(String(planCode)) || 'Paid', status, subscriptionId: preferred.subscription_code || preferred.id || null, customerId: data.data?.customer_code || null, planCode: String(planCode), entitlementActive: ['active', 'non-renewing'].includes(status) });
+  return Response.json({ plan: planNames.get(String(planCode)) || 'Paid', status, subscriptionId: preferred.subscription_code || preferred.id || null, customerId: data.data?.customer_code || null, planCode: String(planCode), entitlementActive: ['active', 'non-renewing'].includes(status), history });
 };
 
 export const config: Config = { path: '/api/billing/status' };
