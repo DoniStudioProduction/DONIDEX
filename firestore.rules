@@ -4,52 +4,30 @@ service cloud.firestore {
     function signedInAs(userId) {
       return request.auth != null && request.auth.uid == userId && request.auth.token.email_verified == true;
     }
-
     function isOwner() {
-      return request.auth != null
-        && request.auth.token.email == 'donistudioproduction@gmail.com'
-        && request.auth.token.email_verified == true;
+      return request.auth != null && request.auth.token.email == 'donistudioproduction@gmail.com' && request.auth.token.email_verified == true;
     }
-
     match /users/{userId} {
       allow read, create, update, delete: if signedInAs(userId);
-      match /businesses/{businessId} {
-        allow read, create, update, delete: if signedInAs(userId);
-      }
-      match /{document=**} {
-        allow read, write: if signedInAs(userId);
-      }
+      match /businesses/{businessId} { allow read, create, update, delete: if signedInAs(userId); }
+      match /{document=**} { allow read, write: if signedInAs(userId); }
     }
-
     match /userProfiles/{userId} {
       allow read: if signedInAs(userId) || isOwner();
-      allow create, update: if signedInAs(userId) || isOwner();
-      allow delete: if signedInAs(userId) || isOwner();
+      allow create, update, delete: if signedInAs(userId) || isOwner();
     }
-
     match /ownerTopUps/{userId} {
       allow read: if isOwner() || signedInAs(userId);
       allow create, update, delete: if isOwner();
     }
-
-    match /ownerSubscriptionAudit/{auditId} {
-      allow read, create: if isOwner();
-      allow update, delete: if false;
+    match /ownerSubscriptionAudit/{auditId} { allow read, create: if isOwner(); allow update, delete: if false; }
+    match /userWallets/{userId} { allow read: if signedInAs(userId) || isOwner(); allow create, update, delete: if isOwner(); }
+    match /ownerCreditTransactions/{transactionId} { allow read, create: if isOwner(); allow update, delete: if false; }
+    match /sharedDocuments/{token} {
+      allow get: if resource.data.published == true;
+      allow create: if signedInAs(request.resource.data.ownerUid);
+      allow update, delete: if signedInAs(resource.data.ownerUid);
     }
-
-    match /userWallets/{userId} {
-      allow read: if signedInAs(userId) || isOwner();
-      allow create, update, delete: if isOwner();
-    }
-
-    match /ownerCreditTransactions/{transactionId} {
-      allow read: if isOwner();
-      allow create: if isOwner();
-      allow update, delete: if false;
-    }
-
-    match /{document=**} {
-      allow read, write: if false;
-    }
+    match /{document=**} { allow read, write: if false; }
   }
 }
