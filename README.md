@@ -30,20 +30,25 @@ GitHub is the source of truth for the DONIDEX migration to a zero-upfront-cost h
 - [x] Business Hub: products/services, recurring profiles, payment follow-up and insights
 - [x] Business Hub data included in authenticated per-business cloud sync
 - [x] Document workflow parity: quotation conversion, receipt creation, preview/edit/duplicate, print/PDF and WhatsApp sharing
+- [x] Tokenized shared-document access with owner-controlled publication
+- [x] Team invitations, membership persistence and role-aware workspace access
 - [x] Capacitor Android packaging
 - [x] Android API 36 enforcement and release workflow
 - [x] GitHub Actions build verification
 - [x] GitHub Actions → Netlify production deployment workflow
 - [x] Netlify project configured
 - [x] Paystack plan-code configuration in Netlify
+- [x] Authenticated billing status, checkout, verification and subscription-management requests
+- [x] Privacy-safe local telemetry and production error boundary
+- [x] Final CI build-output quality gate
 
 ### Remaining release/external work
 - [ ] Verify the next Netlify production deployment end-to-end after production deploy credits resume
 - [ ] Add/recover Paystack Live Secret Key in Netlify without exposing it in chat
-- [ ] Complete secure public invoice-share endpoint and tokenized access
-- [ ] Complete server-side Team/Staff invitation acceptance and role enforcement
+- [ ] Configure `FIREBASE_WEB_API_KEY` (or server-side access to the existing Firebase web API key) in Netlify for authenticated billing API verification
 - [ ] Production Android signing and signed AAB
 - [ ] Google Play Console registration and release submission when the developer account payment step is funded
+- [ ] Live end-to-end authentication, billing, webhook and mobile smoke tests
 
 ## Locked commercial plan
 - Free — NGN 0
@@ -69,7 +74,16 @@ GitHub is the source of truth for the DONIDEX migration to a zero-upfront-cost h
 - No X login
 
 ## Paystack
-The four locked paid plans use the Paystack plan codes configured in the Netlify production environment. The Paystack secret key remains server-side only.
+The four locked paid plans use the Paystack plan codes configured in the Netlify production environment. The Paystack secret key remains server-side only. Billing endpoints require a verified Firebase identity and bind billing activity to the authenticated account.
+
+## Task 16 — Final launch-readiness hardening
+Task 16 completes the final code-level launch-readiness pass before production deployment. Billing account enumeration was closed by requiring Firebase authentication on billing status, checkout, transaction verification and subscription-management endpoints. Client billing requests now send the Firebase ID token. Subscription-management requests additionally verify the Paystack subscription owner before issuing a management link.
+
+### Required production environment
+- Paystack secret and four Paystack plan codes in Netlify server environment.
+- `FIREBASE_WEB_API_KEY` in Netlify server environment for Firebase ID-token verification. This is the Firebase web API key, not a private credential.
+- Firebase client configuration remains in the existing `VITE_FIREBASE_*` environment variables.
+- Never commit Paystack secrets, Firebase private credentials or other private credentials to GitHub or paste them into chat.
 
 ## Support
 - donidexsupport@gmail.com
