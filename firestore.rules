@@ -5,6 +5,8 @@ service cloud.firestore {
     function isOwner() { return request.auth != null && request.auth.token.email == 'donistudioproduction@gmail.com' && request.auth.token.email_verified == true; }
     function teamMember(ownerUid) { return request.auth != null && request.auth.token.email_verified == true && exists(/databases/$(database)/documents/teamMemberships/$(request.auth.uid)) && get(/databases/$(database)/documents/teamMemberships/$(request.auth.uid)).data.ownerUid == ownerUid && get(/databases/$(database)/documents/teamMemberships/$(request.auth.uid)).data.status == 'active'; }
     function teamAdmin(ownerUid) { return teamMember(ownerUid) && get(/databases/$(database)/documents/teamMemberships/$(request.auth.uid)).data.role == 'admin'; }
+    function validAdjustment() { return request.resource.data.targetUid is string && request.resource.data.amount is number && request.resource.data.amount > 0 && request.resource.data.currency == 'NGN' && request.resource.data.reason is string && request.resource.data.reason.size() >= 3 && request.resource.data.proofReference is string && request.resource.data.proofReference.size() >= 2 && request.resource.data.createdByUid == request.auth.uid && request.resource.data.source == 'originator-recovery'; }
+    function validSubscriptionRecovery() { return request.resource.data.targetUid is string && request.resource.data.plan in ['Premium', 'Business/Team'] && request.resource.data.interval in ['month', 'year'] && request.resource.data.duration is number && request.resource.data.duration >= 1 && request.resource.data.reason is string && request.resource.data.reason.size() >= 3 && request.resource.data.proofReference is string && request.resource.data.proofReference.size() >= 2 && request.resource.data.createdByUid == request.auth.uid && request.resource.data.source == 'owner-manual-recovery'; }
 
     match /users/{userId} {
       allow read: if signedInAs(userId) || teamMember(userId);
@@ -38,10 +40,29 @@ service cloud.firestore {
       allow delete: if isOwner() || signedInAs(userId);
     }
 
-    match /ownerTopUps/{userId} { allow read: if isOwner() || signedInAs(userId); allow create, update, delete: if isOwner(); }
-    match /ownerSubscriptionAudit/{auditId} { allow read, create: if isOwner(); allow update, delete: if false; }
-    match /userWallets/{userId} { allow read: if signedInAs(userId) || isOwner(); allow create, update, delete: if isOwner(); }
-    match /ownerCreditTransactions/{transactionId} { allow read, create: if isOwner(); allow update, delete: if false; }
+    match /ownerTopUps/{userId} {
+      allow read: if isOwner() || signedInAs(userId);
+      allow create, update: if isOwner() && validSubscriptionRecovery();
+      allow delete: if isOwner();
+    }
+
+    match /ownerSubscriptionAudit/{auditId} {
+      allow read: if isOwner();
+      allow create: if isOwner() && validSubscriptionRecovery();
+      allow update, delete: if false;
+    }
+
+    match /userWallets/{userId} {
+      allow read: if signedInAs(userId) || isOwner();
+      allow create, update: if isOwner() && request.resource.data.balance is number && request.resource.data.balance >= 0 && request.resource.data.currency == 'NGN';
+      allow delete: if false;
+    }
+
+    match /ownerCreditTransactions/{transactionId} {
+      allow read: if isOwner();
+      allow create: if isOwner() && validAdjustment() && request.resource.data.type in ['manual-credit', 'manual-debit'];
+      allow update, delete: if false;
+    }
 
     match /sharedDocuments/{token} {
       allow get: if resource.data.published == true;
