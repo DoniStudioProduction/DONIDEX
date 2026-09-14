@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, firebaseConfigured } from './lib/firebase';
-import { applyWorkspaceToLocalStorage, loadWorkspace, saveBusiness, saveWorkspace, workspaceFromLocalStorage, type DonidexWorkspace } from './lib/workspace';
+import { applyWorkspaceToLocalStorage, loadWorkspace, saveBusiness, saveWorkspace, workspaceFromLocalStorage } from './lib/workspace';
 
 const SNAPSHOT_KEY = 'donidex:cloud-snapshot';
 const RESTORE_KEY = 'donidex:cloud-restore-user';
-const watchedKeys = ['profile', 'business', 'docs', 'customers', 'expenses', 'settings'];
+const watchedKeys = ['profile', 'business', 'docs', 'customers', 'expenses', 'settings', 'hub_products', 'hub_recurring', 'products', 'recurring'];
 
 const readSnapshot = () => watchedKeys.map(key => [key, localStorage.getItem(`donidex:${key}`)] as const);
 const snapshotText = () => JSON.stringify(readSnapshot());
@@ -18,7 +18,7 @@ export default function WorkspaceBridge() {
     if (!firebaseConfigured || !auth) return;
     let timer: number | undefined;
     const stop = onAuthStateChanged(auth, async user => {
-      if (!user?.emailVerified) { userRef.current = null; return; }
+      if (!user?.emailVerified) { userRef.current = null; if (timer) window.clearInterval(timer); return; }
       userRef.current = user.uid;
       try {
         const remote = await loadWorkspace(user.uid);
@@ -41,6 +41,7 @@ export default function WorkspaceBridge() {
       } catch (error) {
         console.warn('DONIDEX cloud workspace sync unavailable:', error);
       }
+      if (timer) window.clearInterval(timer);
       timer = window.setInterval(async () => {
         const uid = userRef.current;
         if (!uid) return;
