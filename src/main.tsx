@@ -11,6 +11,7 @@ import PaymentCenter from './PaymentCenter';
 import BusinessHub from './BusinessHub';
 import SharedDocument from './SharedDocument';
 import ShareApp from './ShareApp';
+import ProductionAudit from './ProductionAudit';
 import { track } from './lib/telemetry';
 import './index.css';
 import './app-enhancements.css';
@@ -22,6 +23,7 @@ import './payment.css';
 import './businessHub.css';
 import './shared.css';
 import './share-app.css';
+import './production-audit.css';
 
 class AppErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
  state = { failed: false };
@@ -50,6 +52,7 @@ createRoot(document.getElementById('root')!).render(
     <BillingCenter />
     <BusinessHub />
     <ShareApp />
+    <ProductionAudit />
    </>}
   </AppErrorBoundary>
  </React.StrictMode>
