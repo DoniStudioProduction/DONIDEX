@@ -17,6 +17,7 @@ import './team.css';
 import './growth.css';
 import './payment.css';
 import './businessHub.css';
+import './shared.css';
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => undefined));
