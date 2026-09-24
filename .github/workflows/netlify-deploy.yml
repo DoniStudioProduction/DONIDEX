@@ -29,3 +29,6 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: npx netlify-cli deploy --prod --dir=dist --functions=netlify/functions --site=076a69a0-acf4-4dde-b686-2b0bad66e7b9 --message "DONIDEX main ${GITHUB_SHA}"
+
+      - name: Verify production URL
+        run: curl --fail --silent --show-error --location --retry 5 --retry-delay 5 --retry-all-errors https://donidex.netlify.app/ >/dev/null
