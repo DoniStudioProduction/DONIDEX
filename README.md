@@ -90,3 +90,5 @@ Task 16 completes the final code-level launch-readiness pass before production d
 
 ## Development
 The application is mobile-first and designed for Netlify deployment. Firebase is used for authentication and persistence. Environment configuration and secrets are never committed to the repository.
+
+The production Netlify site is linked to this repository's `main` branch so the GitHub source remains the deployment source of truth.
