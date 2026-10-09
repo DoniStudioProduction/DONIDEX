@@ -27,7 +27,7 @@ export default function BusinessHub() {
  const revenue = docs.filter(d => d.status === 'Paid').reduce((sum, d) => sum + d.total, 0);
  const collectionRate = revenue + outstanding ? Math.round((revenue / (revenue + outstanding)) * 100) : 0;
  const customerRisk = useMemo(() => [...customers].sort((a, b) => b.outstanding - a.outstanding).slice(0, 5), [customers]);
- useEffect(() => { if (!auth || !db) return onAuthStateChanged(auth, async user => { if (!user?.emailVerified) return; const membership = await getDoc(doc(db, 'teamMemberships', user.uid)); setCanEdit(!membership.exists() || (membership.data() as any).role !== 'staff'); }); }, []);
+ useEffect(() => { if (!auth || !db) return; return onAuthStateChanged(auth, async user => { if (!user?.emailVerified) return; const membership = await getDoc(doc(db, 'teamMemberships', user.uid)); setCanEdit(!membership.exists() || (membership.data() as any).role !== 'staff'); }); }, []);
  const addProduct = () => { if (!canEdit) return; const next = { id: crypto.randomUUID(), name: 'New service', price: 0, type: 'Service' as const }; const value = [next, ...products]; setProducts(value); save('hub_products', value); };
  const addRecurring = () => { if (!canEdit) return; const next = { id: crypto.randomUUID(), customer: 'New customer', amount: 0, interval: 'Monthly' as const, next: new Date().toISOString().slice(0, 10) }; const value = [next, ...recurring]; setRecurring(value); save('hub_recurring', value); };
  return <>
