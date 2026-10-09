@@ -1,12 +1,6 @@
 import type { Config } from '@netlify/functions';
 import { isIdentityResponse, requireFirebaseIdentity } from './_auth.mts';
-
-const planNames = new Map([
-  [process.env.PAYSTACK_PREMIUM_MONTHLY_PLAN_CODE, 'Premium'],
-  [process.env.PAYSTACK_PREMIUM_YEARLY_PLAN_CODE, 'Premium'],
-  [process.env.PAYSTACK_BUSINESS_MONTHLY_PLAN_CODE, 'Business / Team'],
-  [process.env.PAYSTACK_BUSINESS_YEARLY_PLAN_CODE, 'Business / Team'],
-].filter(([id]) => Boolean(id)) as [string, string][]);
+import { PAYSTACK_PLAN_NAMES } from './_paystack-plans.mts';
 
 export default async (request: Request) => {
   if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405, headers: { allow: 'GET' } });
@@ -23,13 +17,13 @@ export default async (request: Request) => {
   const subscriptions = Array.isArray(data.data?.subscriptions) ? data.data.subscriptions : [];
   const history = subscriptions.map((s: any) => {
     const planCode = s.plan?.plan_code || s.plan?.code || s.plan?.id || '';
-    return { id: s.subscription_code || s.id || planCode, plan: planNames.get(String(planCode)) || s.plan?.name || 'Paid', status: String(s.status || 'unknown').toLowerCase(), interval: s.plan?.interval || null, amount: Number(s.amount || s.plan?.amount || 0), currency: s.currency || 'NGN', start: s.start || s.createdAt || null, nextPayment: s.next_payment_date || null };
+    return { id: s.subscription_code || s.id || planCode, plan: PAYSTACK_PLAN_NAMES.get(String(planCode)) || s.plan?.name || 'Paid', status: String(s.status || 'unknown').toLowerCase(), interval: s.plan?.interval || null, amount: Number(s.amount || s.plan?.amount || 0), currency: s.currency || 'NGN', start: s.start || s.createdAt || null, nextPayment: s.next_payment_date || null };
   }).sort((a: any, b: any) => String(b.start || '').localeCompare(String(a.start || '')));
   const preferred = subscriptions.find((s: any) => ['active', 'non-renewing', 'attention'].includes(String(s.status).toLowerCase())) || subscriptions[0];
   if (!preferred) return Response.json({ plan: 'Free', status: 'none', entitlementActive: false, customerId: data.data?.customer_code || null, history });
   const planCode = preferred.plan?.plan_code || preferred.plan?.code || preferred.plan?.id || '';
   const status = String(preferred.status || 'unknown').toLowerCase();
-  return Response.json({ plan: planNames.get(String(planCode)) || 'Paid', status, subscriptionId: preferred.subscription_code || preferred.id || null, customerId: data.data?.customer_code || null, planCode: String(planCode), entitlementActive: ['active', 'non-renewing'].includes(status), history });
+  return Response.json({ plan: PAYSTACK_PLAN_NAMES.get(String(planCode)) || 'Paid', status, subscriptionId: preferred.subscription_code || preferred.id || null, customerId: data.data?.customer_code || null, planCode: String(planCode), entitlementActive: ['active', 'non-renewing'].includes(status), history });
 };
 
 export const config: Config = { path: '/api/billing/status' };
