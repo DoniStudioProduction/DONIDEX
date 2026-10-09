@@ -1,4 +1,4 @@
-type VerifiedIdentity = { uid: string; email: string };
+type VerifiedIdentity = { uid: string; email: string; emailVerified: true };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -20,7 +20,8 @@ export async function requireFirebaseIdentity(request: Request): Promise<Verifie
     const email = String(account?.email || '').trim().toLowerCase();
     const uid = String(account?.localId || '').trim();
     if (!response.ok || !uid || !emailPattern.test(email)) return Response.json({ error: 'Authentication required.' }, { status: 401 });
-    return { uid, email };
+    if (account?.emailVerified !== true) return Response.json({ error: 'Please verify your email address before continuing.' }, { status: 403 });
+    return { uid, email, emailVerified: true };
   } catch {
     return Response.json({ error: 'Authentication service is temporarily unavailable.' }, { status: 503 });
   }
