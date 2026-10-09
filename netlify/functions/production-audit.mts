@@ -1,5 +1,6 @@
 import type { Config } from '@netlify/functions';
 import { isIdentityResponse, requireFirebaseIdentity } from './_auth.mts';
+import { PAYSTACK_PLAN_CODES } from './_paystack-plans.mts';
 
 const OWNER_EMAIL = 'donistudioproduction@gmail.com';
 
@@ -12,10 +13,10 @@ export default async (request: Request) => {
   const paystackSecretConfigured = Boolean(process.env.PAYSTACK_SECRET_KEY);
   const firebaseApiKeyConfigured = Boolean(process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY);
   const planCodes = {
-    premiumMonthly: Boolean(process.env.PAYSTACK_PREMIUM_MONTHLY_PLAN_CODE),
-    premiumYearly: Boolean(process.env.PAYSTACK_PREMIUM_YEARLY_PLAN_CODE),
-    businessMonthly: Boolean(process.env.PAYSTACK_BUSINESS_MONTHLY_PLAN_CODE),
-    businessYearly: Boolean(process.env.PAYSTACK_BUSINESS_YEARLY_PLAN_CODE),
+    premiumMonthly: Boolean(PAYSTACK_PLAN_CODES.premiumMonthly),
+    premiumYearly: Boolean(PAYSTACK_PLAN_CODES.premiumYearly),
+    businessMonthly: Boolean(PAYSTACK_PLAN_CODES.businessMonthly),
+    businessYearly: Boolean(PAYSTACK_PLAN_CODES.businessYearly),
   };
 
   let paystackReachable = false;

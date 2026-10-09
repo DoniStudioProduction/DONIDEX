@@ -1,12 +1,6 @@
 import type { Config } from '@netlify/functions';
 import { isIdentityResponse, requireFirebaseIdentity } from './_auth.mts';
-
-const planNames = new Map([
-  [process.env.PAYSTACK_PREMIUM_MONTHLY_PLAN_CODE, 'Premium'],
-  [process.env.PAYSTACK_PREMIUM_YEARLY_PLAN_CODE, 'Premium'],
-  [process.env.PAYSTACK_BUSINESS_MONTHLY_PLAN_CODE, 'Business / Team'],
-  [process.env.PAYSTACK_BUSINESS_YEARLY_PLAN_CODE, 'Business / Team'],
-].filter(([id]) => Boolean(id)) as [string, string][]);
+import { PAYSTACK_PLAN_NAMES } from './_paystack-plans.mts';
 
 export default async (request: Request) => {
   if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405, headers: { allow: 'GET' } });
@@ -44,7 +38,7 @@ export default async (request: Request) => {
     amount: Number(transaction.amount || 0),
     currency: transaction.currency || 'NGN',
     customerEmail: transactionEmail,
-    plan: planNames.get(planCode) || transaction.plan?.name || null,
+    plan: PAYSTACK_PLAN_NAMES.get(planCode) || transaction.plan?.name || null,
     planCode: planCode || null,
     subscriptionCode: transaction.subscription?.subscription_code || transaction.subscription_code || null,
     paidAt: transaction.paid_at || null,
