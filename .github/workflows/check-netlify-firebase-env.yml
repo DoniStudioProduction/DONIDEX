@@ -1,0 +1,23 @@
+name: Check DONIDEX Firebase environment
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Link existing Netlify site
+        run: npx netlify-cli link --id 076a69a0-acf4-4dde-b686-2b0bad66e7b9
+      - name: Check required Firebase variable names only
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx netlify-cli env:list --context production --json > "$RUNNER_TEMP/netlify-env.json"
+          node -e 'const fs=require("fs"); const raw=fs.readFileSync(process.env.RUNNER_TEMP+"/netlify-env.json","utf8"); const keys=["VITE_FIREBASE_API_KEY","VITE_FIREBASE_AUTH_DOMAIN","VITE_FIREBASE_PROJECT_ID","VITE_FIREBASE_STORAGE_BUCKET","VITE_FIREBASE_MESSAGING_SENDER_ID","VITE_FIREBASE_APP_ID"]; for (const key of keys) console.log(key+"="+(raw.includes(key)?"present":"missing"));'
