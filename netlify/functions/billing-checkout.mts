@@ -1,12 +1,8 @@
 import type { Config } from '@netlify/functions';
 import { isIdentityResponse, requireFirebaseIdentity } from './_auth.mts';
+import { PAYSTACK_CONFIGURED_PLAN_CODES } from './_paystack-plans.mts';
 
-const plans = new Set([
-  process.env.PAYSTACK_PREMIUM_MONTHLY_PLAN_CODE,
-  process.env.PAYSTACK_PREMIUM_YEARLY_PLAN_CODE,
-  process.env.PAYSTACK_BUSINESS_MONTHLY_PLAN_CODE,
-  process.env.PAYSTACK_BUSINESS_YEARLY_PLAN_CODE,
-].filter(Boolean));
+const plans = new Set<string>(PAYSTACK_CONFIGURED_PLAN_CODES);
 
 export default async (request: Request) => {
   if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405, headers: { allow: 'POST' } });
